@@ -1,140 +1,209 @@
-/* =========================================================
- * 6학년 · What's your favorite subject? 데이터
- * - 질문 : What's your favorite subject?
- * - 대답 : My favorite subject is ___.  (과목 10개 × 초급 / 중급 / 고급)
- * - 잘하는 것 : I'm good at ___.  (10개)
- * - 카테고리(인덱스별 공통) : main(교과 과목 6) / arts(예체능 과목 4)
- * - 이미지 : Canva에서 만든 그림을 images/ 폴더에 아래 파일명으로 넣으면 자동 표시
- *            (파일이 없으면 이모지 타일로 보여 줌)  → CANVA_IMAGES.md 참고
- * - 내 대답 카드(3개) 는 app.js 에서 localStorage 에 저장
- * ========================================================= */
+// 천재(함) 6학년 9단원 · What are you going to do? — 데이터
+// 질문 5개 · 활동 5종류 × 12개 = 60개 · 단어 뜻 사전
 
-const QUESTION = { en: "What's your favorite subject?", ko: "네가 가장 좋아하는 과목은 뭐니?", emoji: "❓" };
-
-/* ===== 과목 10개 ===== */
-const SUBJECTS = [
-  // 📘 교과 과목
-  { id: "korean",         en: "Korean",         ko: "국어",   emoji: "📖", cat: "main" },
-  { id: "english",        en: "English",        ko: "영어",   emoji: "🔤", cat: "main" },
-  { id: "math",           en: "math",           ko: "수학",   emoji: "➗", cat: "main" },
-  { id: "science",        en: "science",        ko: "과학",   emoji: "🔬", cat: "main" },
-  { id: "social-studies", en: "social studies", ko: "사회",   emoji: "🗺️", cat: "main" },
-  { id: "history",        en: "history",        ko: "역사",   emoji: "🏯", cat: "main" },
-  // 🎨 예체능 과목
-  { id: "music",          en: "music",          ko: "음악",   emoji: "🎵", cat: "arts" },
-  { id: "art",            en: "art",            ko: "미술",   emoji: "🎨", cat: "arts" },
-  { id: "pe",             en: "P.E.",           ko: "체육",   emoji: "⚽", cat: "arts" },
-  { id: "practical-arts", en: "practical arts", ko: "실과",   emoji: "🍳", cat: "arts" },
+const QUESTIONS = [
+  { id: "afternoon", emoji: "🌤️", ko: "오늘 오후", en: "this afternoon", koAsk: "오늘 오후에 뭐 할 거니?", pick: "오늘 오후에 할래요" },
+  { id: "tonight",   emoji: "🌙", ko: "오늘 밤",   en: "tonight",        koAsk: "오늘 밤에 뭐 할 거니?",   pick: "오늘 밤에 할래요" },
+  { id: "tomorrow",  emoji: "📅", ko: "내일",     en: "tomorrow",       koAsk: "내일 뭐 할 거니?",        pick: "내일 할래요" },
+  { id: "weekend",   emoji: "🍁", ko: "이번 주말", en: "this weekend",   koAsk: "이번 주말에 뭐 할 거니?", pick: "이번 주말에 할래요" },
+  { id: "vacation",  emoji: "🎒", ko: "겨울방학", en: "this winter vacation", koAsk: "이번 겨울방학에 뭐 할 거니?", pick: "겨울방학에 할래요" },
 ];
-SUBJECTS.forEach(s => { s.img = `images/subjects/${s.id}.png`; });
 
-/* ===== 잘하는 것 10개 (I'm good at ___.) ===== */
-const ABILITIES = [
-  { id: "singing",           en: "singing",           ko: "노래하기",         emoji: "🎤" },
-  { id: "dancing",           en: "dancing",           ko: "춤추기",           emoji: "💃" },
-  { id: "drawing",           en: "drawing",           ko: "그림 그리기",      emoji: "🖍️" },
-  { id: "running",           en: "running",           ko: "달리기",           emoji: "🏃" },
-  { id: "swimming",          en: "swimming",          ko: "수영하기",         emoji: "🏊" },
-  { id: "cooking",           en: "cooking",           ko: "요리하기",         emoji: "🧑‍🍳" },
-  { id: "playing-soccer",    en: "playing soccer",    ko: "축구하기",         emoji: "⚽" },
-  { id: "playing-the-piano", en: "playing the piano", ko: "피아노 치기",      emoji: "🎹" },
-  { id: "writing-stories",   en: "writing stories",   ko: "이야기 쓰기",      emoji: "✏️" },
-  { id: "solving-puzzles",   en: "solving puzzles",   ko: "퍼즐 풀기",        emoji: "🧩" },
+const CATEGORIES = [
+  { id: "home",   emoji: "🏠", ko: "집·학교에서" },
+  { id: "sports", emoji: "⚽", ko: "운동·놀이" },
+  { id: "places", emoji: "📍", ko: "장소에 가기" },
+  { id: "family", emoji: "👨‍👩‍👧", ko: "가족과 함께" },
+  { id: "travel", emoji: "✈️", ko: "가족 여행" },
 ];
-ABILITIES.forEach(a => { a.img = `images/abilities/${a.id}.png`; });
 
-/* ===== 과목 대답 문장 (인덱스 = SUBJECTS 순서) ===== */
-const SUBJECT_LEVELS = {
-  beginner: SUBJECTS.map(s => ({
-    en: `My favorite subject is ${s.en}${s.en.endsWith(".") ? "" : "."}`,
-    ko: `내가 가장 좋아하는 과목은 ${s.ko}이야.`,
-  })),
-  intermediate: [
-    { en: "My favorite subject is Korean. I like reading stories.",  ko: "내가 가장 좋아하는 과목은 국어야. 나는 이야기 읽는 것을 좋아해." },
-    { en: "My favorite subject is English. I like English songs.",   ko: "내가 가장 좋아하는 과목은 영어야. 나는 영어 노래를 좋아해." },
-    { en: "My favorite subject is math. I like numbers.",            ko: "내가 가장 좋아하는 과목은 수학이야. 나는 숫자를 좋아해." },
-    { en: "My favorite subject is science. I like experiments.",     ko: "내가 가장 좋아하는 과목은 과학이야. 나는 실험을 좋아해." },
-    { en: "My favorite subject is social studies. I like maps.",     ko: "내가 가장 좋아하는 과목은 사회야. 나는 지도를 좋아해." },
-    { en: "My favorite subject is history. I like old stories.",     ko: "내가 가장 좋아하는 과목은 역사야. 나는 옛날이야기를 좋아해." },
-    { en: "My favorite subject is music. I like songs.",             ko: "내가 가장 좋아하는 과목은 음악이야. 나는 노래를 좋아해." },
-    { en: "My favorite subject is art. I like colors.",              ko: "내가 가장 좋아하는 과목은 미술이야. 나는 색깔을 좋아해." },
-    { en: "My favorite subject is P.E. I like sports.",              ko: "내가 가장 좋아하는 과목은 체육이야. 나는 운동을 좋아해." },
-    { en: "My favorite subject is practical arts. I like cooking.",  ko: "내가 가장 좋아하는 과목은 실과야. 나는 요리를 좋아해." },
-  ],
-  advanced: [
-    { en: "My favorite subject is Korean. I'm good at writing stories.",      ko: "내가 가장 좋아하는 과목은 국어야. 나는 이야기 쓰기를 잘해." },
-    { en: "My favorite subject is English. I'm good at speaking English.",    ko: "내가 가장 좋아하는 과목은 영어야. 나는 영어 말하기를 잘해." },
-    { en: "My favorite subject is math. I'm good at solving problems.",       ko: "내가 가장 좋아하는 과목은 수학이야. 나는 문제 풀기를 잘해." },
-    { en: "My favorite subject is science. I'm good at doing experiments.",   ko: "내가 가장 좋아하는 과목은 과학이야. 나는 실험하기를 잘해." },
-    { en: "My favorite subject is social studies. I'm good at reading maps.", ko: "내가 가장 좋아하는 과목은 사회야. 나는 지도 읽기를 잘해." },
-    { en: "My favorite subject is history. I'm good at telling old stories.", ko: "내가 가장 좋아하는 과목은 역사야. 나는 옛날이야기 들려주기를 잘해." },
-    { en: "My favorite subject is music. I'm good at singing.",               ko: "내가 가장 좋아하는 과목은 음악이야. 나는 노래를 잘해." },
-    { en: "My favorite subject is art. I'm good at drawing.",                 ko: "내가 가장 좋아하는 과목은 미술이야. 나는 그림 그리기를 잘해." },
-    { en: "My favorite subject is P.E. I'm good at running.",                 ko: "내가 가장 좋아하는 과목은 체육이야. 나는 달리기를 잘해." },
-    { en: "My favorite subject is practical arts. I'm good at cooking.",      ko: "내가 가장 좋아하는 과목은 실과야. 나는 요리를 잘해." },
-  ],
+// ko: "나는 ___ 거야."의 빈칸 · mid: 중급(누구와·어디서·무엇을 보러) · book: 교과서 표현
+const ACTIVITIES = [
+  // 🏠 집·학교에서
+  { id: "stay-home", cat: "home", book: true, emoji: "🏠", en: "stay home", ko: "집에 있을",
+    when: ["afternoon", "tonight", "tomorrow", "weekend"], mid: { en: "stay home and rest with my cat", ko: "고양이와 함께 집에서 쉴" } },
+  { id: "clean-room", cat: "home", book: true, emoji: "🧹", en: "clean my room", ko: "내 방을 청소할",
+    when: ["afternoon", "tonight", "tomorrow", "weekend"], mid: { en: "clean my room with my brother", ko: "남동생과 함께 내 방을 청소할" } },
+  { id: "study-math", cat: "home", book: true, emoji: "➗", en: "study math", ko: "수학 공부를 할",
+    when: ["afternoon", "tonight", "tomorrow", "vacation"], mid: { en: "study math at the library", ko: "도서관에서 수학 공부를 할" } },
+  { id: "read-book", cat: "home", emoji: "📖", en: "read a book", ko: "책을 읽을",
+    when: ["afternoon", "tonight", "weekend", "vacation"], mid: { en: "read a book under the maple tree", ko: "단풍나무 아래에서 책을 읽을" } },
+  { id: "do-homework", cat: "home", emoji: "📝", en: "do my homework", ko: "숙제를 할",
+    when: ["afternoon", "tonight", "tomorrow"], mid: { en: "do my homework with my friend", ko: "친구와 함께 숙제를 할" } },
+  { id: "play-games", cat: "home", emoji: "🎮", en: "play computer games", ko: "컴퓨터 게임을 할",
+    when: ["afternoon", "tonight", "weekend"], mid: { en: "play computer games with my cousin", ko: "사촌과 함께 컴퓨터 게임을 할" } },
+  { id: "watch-movie", cat: "home", emoji: "🎬", en: "watch a movie", ko: "영화를 볼",
+    when: ["tonight", "weekend", "vacation"], mid: { en: "watch a movie with my family at home", ko: "집에서 가족과 함께 영화를 볼" } },
+  { id: "draw-pictures", cat: "home", emoji: "🎨", en: "draw pictures", ko: "그림을 그릴",
+    when: ["afternoon", "tonight", "tomorrow"], mid: { en: "draw pictures of autumn leaves", ko: "가을 낙엽 그림을 그릴" } },
+  { id: "practice-piano", cat: "home", emoji: "🎹", en: "practice the piano", ko: "피아노 연습을 할",
+    when: ["afternoon", "tonight", "tomorrow", "vacation"], mid: { en: "practice the piano for the school concert", ko: "학교 음악회를 위해 피아노 연습을 할" } },
+  { id: "rake-leaves", cat: "home", emoji: "🍂", en: "rake leaves", ko: "낙엽을 쓸",
+    when: ["afternoon", "tomorrow", "weekend"], mid: { en: "rake leaves in the yard with my dad", ko: "아빠와 함께 마당에서 낙엽을 쓸" } },
+  { id: "write-diary", cat: "home", emoji: "📔", en: "write in my diary", ko: "일기를 쓸",
+    when: ["tonight"], mid: { en: "write in my diary before bed", ko: "자기 전에 일기를 쓸" } },
+  { id: "leaf-bookmark", cat: "home", emoji: "🔖", en: "make a leaf bookmark", ko: "나뭇잎 책갈피를 만들",
+    when: ["afternoon", "tomorrow", "weekend"], mid: { en: "make a leaf bookmark for my teacher", ko: "선생님께 드릴 나뭇잎 책갈피를 만들" } },
+
+  // ⚽ 운동·놀이
+  { id: "watch-baseball", cat: "sports", book: true, emoji: "⚾", en: "watch a baseball game", ko: "야구 경기를 볼",
+    when: ["tonight", "tomorrow", "weekend"], mid: { en: "watch a baseball game at the stadium", ko: "야구장에서 야구 경기를 볼" } },
+  { id: "play-soccer", cat: "sports", emoji: "⚽", en: "play soccer", ko: "축구를 할",
+    when: ["afternoon", "tomorrow", "weekend"], mid: { en: "play soccer with my friends at the park", ko: "공원에서 친구들과 축구를 할" } },
+  { id: "play-basketball", cat: "sports", emoji: "🏀", en: "play basketball", ko: "농구를 할",
+    when: ["afternoon", "tomorrow", "weekend"], mid: { en: "play basketball in the school gym", ko: "학교 체육관에서 농구를 할" } },
+  { id: "ride-bike", cat: "sports", emoji: "🚲", en: "ride my bike", ko: "자전거를 탈",
+    when: ["afternoon", "tomorrow", "weekend"], mid: { en: "ride my bike along the river", ko: "강을 따라 자전거를 탈" } },
+  { id: "fly-kite", cat: "sports", emoji: "🪁", en: "fly a kite", ko: "연을 날릴",
+    when: ["afternoon", "tomorrow", "weekend"], mid: { en: "fly a kite on the hill", ko: "언덕에서 연을 날릴" } },
+  { id: "go-hiking", cat: "sports", emoji: "🥾", en: "go hiking", ko: "등산을 갈",
+    when: ["tomorrow", "weekend"], mid: { en: "go hiking with my uncle on the mountain", ko: "삼촌과 함께 산으로 등산을 갈" } },
+  { id: "play-badminton", cat: "sports", emoji: "🏸", en: "play badminton", ko: "배드민턴을 칠",
+    when: ["afternoon", "tomorrow", "weekend"], mid: { en: "play badminton with my mom in the park", ko: "공원에서 엄마와 배드민턴을 칠" } },
+  { id: "inline-skating", cat: "sports", emoji: "🛼", en: "go inline skating", ko: "인라인스케이트를 타러 갈",
+    when: ["afternoon", "tomorrow", "weekend"], mid: { en: "go inline skating with my best friend", ko: "가장 친한 친구와 인라인스케이트를 타러 갈" } },
+  { id: "jump-rope", cat: "sports", emoji: "🪢", en: "jump rope", ko: "줄넘기를 할",
+    when: ["afternoon", "tonight", "tomorrow"], mid: { en: "jump rope in the playground", ko: "운동장에서 줄넘기를 할" } },
+  { id: "play-dodgeball", cat: "sports", emoji: "🔴", en: "play dodgeball", ko: "피구를 할",
+    when: ["afternoon", "tomorrow"], mid: { en: "play dodgeball with my classmates", ko: "반 친구들과 피구를 할" } },
+  { id: "learn-taekwondo", cat: "sports", emoji: "🥋", en: "learn taekwondo", ko: "태권도를 배울",
+    when: ["afternoon", "tomorrow", "vacation"], mid: { en: "learn taekwondo at the taekwondo school", ko: "태권도장에서 태권도를 배울" } },
+  { id: "relay-race", cat: "sports", emoji: "🏃", en: "run a relay race", ko: "이어달리기를 할",
+    when: ["tomorrow"], mid: { en: "run a relay race on sports day", ko: "운동회 날에 이어달리기를 할" } },
+
+  // 📍 장소에 가기
+  { id: "pc-room", cat: "places", emoji: "🖥️", en: "go to a PC room", ko: "PC방에 갈",
+    when: ["afternoon", "weekend"], mid: { en: "go to a PC room with my friends", ko: "친구들과 PC방에 갈" } },
+  { id: "comic-cafe", cat: "places", emoji: "📚", en: "go to a comic book cafe", ko: "만화 카페에 갈",
+    when: ["afternoon", "weekend", "vacation"], mid: { en: "go to a comic book cafe to read comics", ko: "만화책을 읽으러 만화 카페에 갈" } },
+  { id: "karaoke", cat: "places", emoji: "🎤", en: "go to a coin karaoke room", ko: "코인노래방에 갈",
+    when: ["afternoon", "tonight", "weekend"], mid: { en: "go to a coin karaoke room to sing songs", ko: "노래를 부르러 코인노래방에 갈" } },
+  { id: "library", cat: "places", emoji: "🏛️", en: "go to the library", ko: "도서관에 갈",
+    when: ["afternoon", "tomorrow", "weekend", "vacation"], mid: { en: "go to the library to borrow books", ko: "책을 빌리러 도서관에 갈" } },
+  { id: "bookstore", cat: "places", emoji: "📕", en: "go to the bookstore", ko: "서점에 갈",
+    when: ["afternoon", "tomorrow", "weekend"], mid: { en: "go to the bookstore to buy a new book", ko: "새 책을 사러 서점에 갈" } },
+  { id: "shopping-mall", cat: "places", emoji: "🛍️", en: "go to the shopping mall", ko: "쇼핑몰에 갈",
+    when: ["tomorrow", "weekend", "vacation"], mid: { en: "go to the shopping mall to buy a winter jacket", ko: "겨울 점퍼를 사러 쇼핑몰에 갈" } },
+  { id: "bakery", cat: "places", emoji: "🥐", en: "go to the bakery", ko: "빵집에 갈",
+    when: ["afternoon", "tomorrow"], mid: { en: "go to the bakery to buy sweet potato bread", ko: "고구마 빵을 사러 빵집에 갈" } },
+  { id: "escape-room", cat: "places", emoji: "🔐", en: "go to an escape room", ko: "방탈출 카페에 갈",
+    when: ["weekend", "vacation"], mid: { en: "go to an escape room with my sister", ko: "언니(누나)와 방탈출 카페에 갈" } },
+  { id: "trampoline", cat: "places", emoji: "🤸", en: "go to a trampoline park", ko: "트램펄린 파크에 갈",
+    when: ["afternoon", "weekend", "vacation"], mid: { en: "go to a trampoline park to jump high", ko: "높이 뛰러 트램펄린 파크에 갈" } },
+  { id: "cat-cafe", cat: "places", emoji: "🐱", en: "go to a cat cafe", ko: "고양이 카페에 갈",
+    when: ["afternoon", "weekend"], mid: { en: "go to a cat cafe to play with cats", ko: "고양이와 놀러 고양이 카페에 갈" } },
+  { id: "hair-salon", cat: "places", emoji: "💇", en: "go to the hair salon", ko: "미용실에 갈",
+    when: ["afternoon", "tomorrow"], mid: { en: "go to the hair salon to get a haircut", ko: "머리를 자르러 미용실에 갈" } },
+  { id: "dentist", cat: "places", emoji: "🦷", en: "go to the dentist", ko: "치과에 갈",
+    when: ["afternoon", "tomorrow"], mid: { en: "go to the dentist with my mom", ko: "엄마와 함께 치과에 갈" } },
+
+  // 👨‍👩‍👧 가족과 함께
+  { id: "visit-grandparents", cat: "family", book: true, emoji: "👵", en: "visit my grandparents", ko: "조부모님 댁에 갈",
+    when: ["tomorrow", "weekend", "vacation"], mid: { en: "visit my grandparents in the countryside", ko: "시골에 계신 조부모님 댁에 갈" } },
+  { id: "go-camping", cat: "family", book: true, emoji: "⛺", en: "go camping", ko: "캠핑을 갈",
+    when: ["weekend", "vacation"], mid: { en: "go camping with my family by the lake", ko: "가족과 함께 호숫가로 캠핑을 갈" } },
+  { id: "pick-apples", cat: "family", emoji: "🍎", en: "pick apples", ko: "사과를 딸",
+    when: ["tomorrow", "weekend"], mid: { en: "pick apples at my uncle's farm", ko: "삼촌네 농장에서 사과를 딸" } },
+  { id: "autumn-leaves", cat: "family", emoji: "🍁", en: "see the autumn leaves", ko: "단풍 구경을 할",
+    when: ["tomorrow", "weekend"], mid: { en: "see the autumn leaves in the mountains", ko: "산에서 단풍 구경을 할" } },
+  { id: "chestnuts", cat: "family", emoji: "🌰", en: "pick up chestnuts", ko: "밤을 주울",
+    when: ["tomorrow", "weekend"], mid: { en: "pick up chestnuts with my grandma", ko: "할머니와 함께 밤을 주울" } },
+  { id: "go-fishing", cat: "family", emoji: "🎣", en: "go fishing", ko: "낚시하러 갈",
+    when: ["weekend", "vacation"], mid: { en: "go fishing with my dad at the river", ko: "아빠와 함께 강으로 낚시하러 갈" } },
+  { id: "eat-out", cat: "family", emoji: "🍽️", en: "eat out", ko: "외식을 할",
+    when: ["tonight", "weekend"], mid: { en: "eat out with my family at a restaurant", ko: "가족과 함께 식당에서 외식을 할" } },
+  { id: "go-picnic", cat: "family", emoji: "🧺", en: "go on a picnic", ko: "소풍을 갈",
+    when: ["tomorrow", "weekend"], mid: { en: "go on a picnic at the park with my family", ko: "가족과 함께 공원으로 소풍을 갈" } },
+  { id: "visit-zoo", cat: "family", emoji: "🦒", en: "visit the zoo", ko: "동물원에 갈",
+    when: ["weekend", "vacation"], mid: { en: "visit the zoo to see the pandas", ko: "판다를 보러 동물원에 갈" } },
+  { id: "sweet-potatoes", cat: "family", emoji: "🍠", en: "dig sweet potatoes", ko: "고구마를 캘",
+    when: ["tomorrow", "weekend"], mid: { en: "dig sweet potatoes on my grandpa's farm", ko: "할아버지 밭에서 고구마를 캘" } },
+  { id: "bake-cookies", cat: "family", emoji: "🍪", en: "bake cookies", ko: "쿠키를 구울",
+    when: ["afternoon", "tonight", "weekend"], mid: { en: "bake cookies with my mom in the kitchen", ko: "부엌에서 엄마와 쿠키를 구울" } },
+  { id: "fireworks", cat: "family", emoji: "🎆", en: "watch the fireworks", ko: "불꽃놀이를 볼",
+    when: ["tonight", "weekend"], mid: { en: "watch the fireworks at the festival", ko: "축제에서 불꽃놀이를 볼" } },
+
+  // ✈️ 가족 여행
+  { id: "jeju", cat: "travel", emoji: "🍊", en: "travel to Jeju Island", ko: "제주도로 여행을 갈",
+    when: ["weekend", "vacation"], mid: { en: "travel to Jeju Island to pick tangerines", ko: "귤을 따러 제주도로 여행을 갈" } },
+  { id: "gyeongju", cat: "travel", emoji: "🛕", en: "visit Gyeongju", ko: "경주에 갈",
+    when: ["weekend", "vacation"], mid: { en: "visit Gyeongju to see Bulguksa Temple", ko: "불국사를 보러 경주에 갈" } },
+  { id: "busan", cat: "travel", emoji: "🌊", en: "go to Busan", ko: "부산에 갈",
+    when: ["weekend", "vacation"], mid: { en: "go to Busan to see the sea", ko: "바다를 보러 부산에 갈" } },
+  { id: "seoraksan", cat: "travel", emoji: "⛰️", en: "climb Seoraksan", ko: "설악산에 오를",
+    when: ["weekend"], mid: { en: "climb Seoraksan with my family", ko: "가족과 함께 설악산에 오를" } },
+  { id: "jeonju", cat: "travel", emoji: "🏯", en: "visit Jeonju", ko: "전주에 갈",
+    when: ["weekend", "vacation"], mid: { en: "visit Jeonju to eat bibimbap", ko: "비빔밥을 먹으러 전주에 갈" } },
+  { id: "suncheon", cat: "travel", emoji: "🌾", en: "visit Suncheon Bay", ko: "순천만에 갈",
+    when: ["weekend"], mid: { en: "visit Suncheon Bay to see the reeds", ko: "갈대를 보러 순천만에 갈" } },
+  { id: "andong", cat: "travel", emoji: "🎭", en: "visit Andong", ko: "안동에 갈",
+    when: ["weekend", "vacation"], mid: { en: "visit Andong to see the mask dance", ko: "탈춤을 보러 안동에 갈" } },
+  { id: "seoul", cat: "travel", emoji: "🗼", en: "travel to Seoul", ko: "서울로 여행을 갈",
+    when: ["weekend", "vacation"], mid: { en: "travel to Seoul to see Namsan Tower", ko: "남산타워를 보러 서울로 여행을 갈" } },
+  { id: "gangneung", cat: "travel", emoji: "☕", en: "go to Gangneung", ko: "강릉에 갈",
+    when: ["weekend", "vacation"], mid: { en: "go to Gangneung to see the sunrise", ko: "해돋이를 보러 강릉에 갈" } },
+  { id: "yeosu", cat: "travel", emoji: "🌉", en: "visit Yeosu", ko: "여수에 갈",
+    when: ["weekend", "vacation"], mid: { en: "visit Yeosu to ride the cable car", ko: "케이블카를 타러 여수에 갈" } },
+  { id: "train-trip", cat: "travel", emoji: "🚄", en: "take a train trip", ko: "기차 여행을 할",
+    when: ["weekend", "vacation"], mid: { en: "take a train trip with my grandparents", ko: "조부모님과 함께 기차 여행을 할" } },
+  { id: "japan", cat: "travel", emoji: "🗾", en: "travel to Japan", ko: "일본으로 여행을 갈",
+    when: ["vacation"], mid: { en: "travel to Japan with my family", ko: "가족과 함께 일본으로 여행을 갈" } },
+];
+
+// 단어 뜻 사전 (소문자 키) — 모든 문장의 단어가 있어야 함 (test/check-data.js로 확인)
+const DICT = {
+  // 질문·대답 틀
+  "what": "무엇", "are": "~이다 (are)", "you": "너", "going": "가는 중 (be going to: ~할 거야)", "to": "~에, ~로 / ~하기 위해",
+  "do": "하다", "this": "이, 이번", "afternoon": "오후", "tonight": "오늘 밤", "tomorrow": "내일",
+  "weekend": "주말", "winter": "겨울", "vacation": "방학", "i'm": "나는 ~이다 (I am)", "i": "나", "am": "~이다 (am)",
+  // 작은 말
+  "a": "하나의", "an": "하나의 (모음 앞)", "the": "그", "my": "나의", "and": "그리고", "with": "~와 함께",
+  "at": "~에서", "in": "~ 안에서", "on": "~ 위에서, ~에", "of": "~의", "for": "~을 위해", "by": "~ 옆에",
+  "along": "~을 따라", "under": "~ 아래에", "before": "~ 전에",
+  // 동사
+  "stay": "머무르다", "home": "집, 집에", "clean": "청소하다", "study": "공부하다", "read": "읽다",
+  "play": "놀다, (경기를) 하다, 연주하다", "watch": "보다, 관람하다", "draw": "그리다", "practice": "연습하다",
+  "rake": "갈퀴로 긁어모으다", "write": "쓰다", "make": "만들다", "ride": "타다", "fly": "날리다",
+  "go": "가다", "jump": "뛰다, 점프하다", "learn": "배우다", "run": "달리다", "visit": "방문하다",
+  "pick": "따다, 고르다", "up": "위로 (pick up: 줍다)", "see": "보다", "eat": "먹다", "out": "밖에서 (eat out: 외식하다)",
+  "dig": "캐다, 파다", "bake": "굽다", "travel": "여행하다", "climb": "오르다", "take": "타다, 가지다",
+  "rest": "쉬다", "borrow": "빌리다", "buy": "사다", "sing": "노래하다", "get": "받다, 얻다",
+  // 명사
+  "room": "방", "math": "수학", "book": "책", "books": "책들", "homework": "숙제", "computer": "컴퓨터",
+  "games": "게임들", "game": "경기, 게임", "movie": "영화", "pictures": "그림들", "piano": "피아노",
+  "leaves": "나뭇잎들, 낙엽", "diary": "일기장", "leaf": "나뭇잎", "bookmark": "책갈피", "baseball": "야구",
+  "soccer": "축구", "basketball": "농구", "bike": "자전거", "kite": "연", "hiking": "등산, 하이킹",
+  "badminton": "배드민턴", "inline": "인라인", "skating": "스케이트 타기", "rope": "줄 (jump rope: 줄넘기)",
+  "dodgeball": "피구", "taekwondo": "태권도", "relay": "이어달리기", "race": "경주",
+  "pc": "PC (개인용 컴퓨터)", "comic": "만화", "comics": "만화책", "cafe": "카페", "coin": "동전",
+  "karaoke": "노래방", "library": "도서관", "bookstore": "서점", "shopping": "쇼핑", "mall": "쇼핑몰",
+  "bakery": "빵집", "escape": "탈출", "trampoline": "트램펄린", "park": "공원", "cat": "고양이", "cats": "고양이들",
+  "hair": "머리카락", "salon": "미용실", "dentist": "치과, 치과 의사", "grandparents": "조부모님 (할머니·할아버지)",
+  "camping": "캠핑", "apples": "사과들", "autumn": "가을", "chestnuts": "밤들", "fishing": "낚시",
+  "picnic": "소풍", "zoo": "동물원", "sweet": "달콤한", "potatoes": "감자들 (sweet potatoes: 고구마)",
+  "potato": "감자 (sweet potato: 고구마)", "cookies": "쿠키들", "fireworks": "불꽃놀이",
+  "island": "섬", "trip": "여행", "train": "기차", "bay": "만 (바다가 육지로 들어온 곳)",
+  // 중급 문장 단어
+  "brother": "남동생, 형, 오빠", "maple": "단풍나무", "tree": "나무", "friend": "친구", "friends": "친구들",
+  "cousin": "사촌", "family": "가족", "school": "학교", "concert": "음악회", "yard": "마당", "dad": "아빠",
+  "bed": "침대 (before bed: 자기 전에)", "teacher": "선생님", "stadium": "경기장", "gym": "체육관",
+  "river": "강", "hill": "언덕", "uncle": "삼촌", "mountain": "산", "mountains": "산들", "mom": "엄마",
+  "best": "가장 좋은 (best friend: 가장 친한 친구)", "playground": "운동장, 놀이터", "classmates": "반 친구들",
+  "sports": "스포츠, 운동", "day": "날 (sports day: 운동회)", "new": "새로운", "jacket": "점퍼, 재킷",
+  "bread": "빵", "sister": "언니, 누나, 여동생", "high": "높이", "haircut": "머리 자르기",
+  "countryside": "시골", "lake": "호수", "uncle's": "삼촌의", "farm": "농장, 밭", "grandma": "할머니",
+  "restaurant": "식당", "pandas": "판다들", "grandpa's": "할아버지의", "kitchen": "부엌", "festival": "축제",
+  "tangerines": "귤들", "temple": "절", "sea": "바다", "reeds": "갈대들", "mask": "탈, 가면",
+  "dance": "춤", "tower": "탑, 타워", "sunrise": "해돋이", "cable": "케이블", "car": "자동차, (케이블카의) 칸",
+  "songs": "노래들", "bibimbap": "비빔밥",
+  // 지명
+  "jeju": "제주 (제주도)", "gyeongju": "경주", "busan": "부산", "seoraksan": "설악산", "jeonju": "전주",
+  "suncheon": "순천", "andong": "안동", "seoul": "서울", "gangneung": "강릉", "yeosu": "여수", "japan": "일본",
+  "bulguksa": "불국사", "namsan": "남산",
 };
 
-/* ===== 과목 카테고리 ===== */
-const SUBJECT_CATS = [
-  { key: "main", label: "📘 교과 과목" },
-  { key: "arts", label: "🎨 예체능 과목" },
-];
+// 지명(채점 가중치 0.6용 고유명사)
+const PLACE_NAMES = ["jeju", "gyeongju", "busan", "seoraksan", "jeonju", "suncheon", "andong", "seoul",
+  "gangneung", "yeosu", "japan", "bulguksa", "namsan"];
 
-/* ===== 단어 뜻 사전 ===== */
-function wordKey(w) {
-  return w.toLowerCase().replace(/^[^a-z0-9':]+/, "").replace(/[^a-z0-9':]+$/, "");
-}
-
-const WORD_MEANINGS = {
-  "what's": "무엇이니? (what is)",
-  "what": "무엇",
-  "your": "너의",
-  "my": "나의",
-  "favorite": "가장 좋아하는",
-  "subject": "과목",
-  "is": "~이다",
-  "i'm": "나는 ~이다 (I am)",
-  "i": "나는",
-  "good": "좋은, 잘하는 (good at: ~을 잘하다)",
-  "at": "~에 (good at: ~을 잘하다)",
-  "like": "좋아하다",
-  "korean": "국어, 한국어",
-  "english": "영어",
-  "math": "수학",
-  "science": "과학",
-  "social": "사회의 (social studies: 사회 과목)",
-  "studies": "공부, 학문 (social studies: 사회 과목)",
-  "history": "역사",
-  "music": "음악",
-  "art": "미술",
-  "p.e": "체육 (Physical Education)",
-  "practical": "실용적인 (practical arts: 실과)",
-  "arts": "기술, 예술 (practical arts: 실과)",
-  "singing": "노래하기 (sing)",
-  "dancing": "춤추기 (dance)",
-  "drawing": "그림 그리기 (draw)",
-  "running": "달리기 (run)",
-  "swimming": "수영하기 (swim)",
-  "cooking": "요리하기 (cook)",
-  "playing": "(운동·악기를) 하기, 연주하기 (play)",
-  "soccer": "축구",
-  "the": "그 (악기 앞에: the piano)",
-  "piano": "피아노",
-  "writing": "쓰기 (write)",
-  "stories": "이야기들 (story)",
-  "solving": "풀기 (solve)",
-  "puzzles": "퍼즐들",
-  "problems": "문제들",
-  "reading": "읽기 (read)",
-  "speaking": "말하기 (speak)",
-  "doing": "하기 (do)",
-  "experiments": "실험들",
-  "maps": "지도들",
-  "telling": "말해 주기 (tell)",
-  "old": "옛날의, 오래된",
-  "songs": "노래들",
-  "numbers": "숫자들",
-  "colors": "색깔들",
-  "sports": "운동, 스포츠",
-};
+if (typeof module !== "undefined") module.exports = { QUESTIONS, CATEGORIES, ACTIVITIES, DICT, PLACE_NAMES };
