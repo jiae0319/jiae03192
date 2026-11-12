@@ -18,7 +18,7 @@ const server = http.createServer((req, res) => {
 async function stubFonts(ctx) { await ctx.route(/hangeul\.pstatic\.net|fonts\.googleapis\.com|fonts\.gstatic\.com/, (r) => r.fulfill({ status: 200, contentType: "text/css", body: "" })); }
 
 const FAKE_SR = `
-  window.__fakeAlts = ["I'm going to fly a kite"];
+  window.__fakeAlts = ["how much are these socks"];
   class FakeSR {
     constructor() { this.lang = ""; this.interimResults = false; this.maxAlternatives = 1; }
     start() {
@@ -54,109 +54,125 @@ function check(name, ok, extra) { if (!ok) failures++; console.log(`${ok ? "✅"
   await page.goto(url);
   await page.waitForLoadState("networkidle");
 
-  const badge = () => page.textContent("#plan-count");
+  const badge = () => page.textContent("#cart-count");
   check("처음 배지 0/5", (await badge()) === "0/5");
-  check("카드 60장", (await page.locator("#tab-easy .card").count()) === 60);
+  check("카드 20장", (await page.locator("#tab-easy .card").count()) === 20);
   const brokenImgs = await page.$$eval("#tab-easy .card img", (imgs) => imgs.filter((i) => i.complete && i.naturalWidth === 0).length);
   check("그림 깨짐 0", brokenImgs === 0, brokenImgs);
-  check("말풍선 빈칸", (await page.textContent("#tab-easy .a-en")).includes("I'm going to"));
+  check("처음 대화: 인사", (await page.textContent("#tab-easy .d-greet")).includes("May I help you?"));
+  check("처음 대화: 질문", (await page.innerText("#tab-easy .d-q")).replace(/\s+/g, " ").includes("Yes, please. How much are these socks?"));
+  check("처음 대화: 대답 2,000 won", (await page.textContent("#tab-easy .d-a")) === "They are 2,000 won.");
+  check("대화 한국어", (await page.textContent("#tab-easy .d-q-ko")).includes("이 양말은 얼마예요?"));
+  check("가격 칩 10개", (await page.locator("#tab-easy .price-chips .price-chip").count()) === 10);
+  check("가격 칩 2,000 선택됨", (await page.textContent("#tab-easy .price-chip.on")).includes("2,000원"));
+  check("가격표 그림", (await page.textContent("#tab-easy .shop-item .price-tag")) === "2,000원");
 
-  // 카드 선택 → 말풍선·배지
-  await page.click('#tab-easy .card[data-id="fly-kite"] .pick-btn');
-  check("선택 후 배지 1/5", (await badge()) === "1/5");
-  check("말풍선에 대답", (await page.textContent("#tab-easy .a-en")) === "I'm going to fly a kite.");
-  check("Q1 버튼 ✓ 표시", (await page.textContent('#tab-easy .q-btn[data-i="0"]')).includes("✓"));
-  check("버튼 문구 바뀜", (await page.textContent('#tab-easy .card[data-id="fly-kite"] .pick-btn')).includes("계획이에요"));
+  // 가격 바꾸기
+  await page.click('#tab-easy .price-chip[data-won="5000"]');
+  check("가격 바꾸면 대답 바뀜", (await page.textContent("#tab-easy .d-a")) === "They are 5,000 won.");
+  check("카드 대답도 바뀜", (await page.textContent('#tab-easy .card[data-id="socks"] .sent.ans')).includes("5,000"));
+  check("처음 가격 버튼", await page.isVisible("#tab-easy .reset-price"));
+  await page.click("#tab-easy .reset-price");
+  check("처음 가격으로", (await page.textContent("#tab-easy .d-a")) === "They are 2,000 won.");
 
-  // 다시 누르면 빠짐
-  await page.click('#tab-easy .card[data-id="fly-kite"] .pick-btn');
+  // 물어보기 → 대화 바뀜
+  await page.click('#tab-easy .card[data-id="gloves"] .talk-btn');
+  check("물어보기 → 대화에 장갑", (await page.textContent("#tab-easy .d-q")).includes("these gloves") && (await page.textContent("#tab-easy .d-a")).includes("5,000"));
+  check("한국어 받침 (장갑은)", (await page.textContent("#tab-easy .d-q-ko")).includes("이 장갑은 얼마예요?"));
+
+  // 담기
+  await page.click('#tab-easy .card[data-id="socks"] .pick-btn');
+  check("담기 → 1/5", (await badge()) === "1/5");
+  check("버튼 문구 바뀜", (await page.textContent('#tab-easy .card[data-id="socks"] .pick-btn')).includes("담았어요"));
+  await page.click('#tab-easy .card[data-id="socks"] .pick-btn');
   check("다시 누르면 빠짐 0/5", (await badge()) === "0/5");
-  await page.click('#tab-easy .card[data-id="fly-kite"] .pick-btn');
-  // 같은 질문에 다른 카드 → 바뀜
-  await page.click('#tab-easy .card[data-id="play-soccer"] .pick-btn');
-  check("질문당 계획 1개(바뀜)", (await badge()) === "1/5" && (await page.textContent("#tab-easy .a-en")).includes("play soccer"));
-  await page.click('#tab-easy .card[data-id="fly-kite"] .pick-btn');
+  for (const id of ["socks", "sneakers", "hairpins"]) await page.click(`#tab-easy .card[data-id="${id}"] .pick-btn`);
+  check("3개 담기 3/5", (await badge()) === "3/5");
 
-  // 다음 질문 ▶
-  await page.click("#tab-easy .next-q");
-  check("Q1 버튼 글자 그대로", (await page.textContent('#tab-easy .q-btn[data-i="0"]')).includes("this afternoon"));
-  check("다음 질문 → Q2", (await page.textContent("#tab-easy .dq-en")).includes("tonight"));
-
-  // 중급 탭에서 Q2 선택 → 공유
+  // 중급
   await page.click('.tab-btn[data-tab="mid"]');
-  check("중급 탭 표시", await page.isVisible("#tab-mid .card"));
-  check("중급 탭에도 Q1 ✓", (await page.textContent('#tab-mid .q-btn[data-i="0"]')).includes("✓"));
-  check("중급 문장 길게", (await page.textContent('#tab-mid .card[data-id="fly-kite"] .sent')).includes("on the hill"));
-  await page.click('#tab-mid .card[data-id="watch-movie"] .pick-btn');
-  check("중급 선택 → 2/5", (await badge()) === "2/5");
-  await page.click('.tab-btn[data-tab="easy"]');
-  check("초급 탭 Q2 ✓ (공유)", (await page.textContent('#tab-easy .q-btn[data-i="1"]')).includes("✓"));
-  check("초급 말풍선에 중급 대답", (await page.textContent("#tab-easy .a-en")).includes("with my family at home"));
+  check("중급 문장", (await page.textContent('#tab-mid .card[data-id="socks"] .sent')).includes("these striped socks"));
+  check("중급 한국어", (await page.textContent('#tab-mid .card[data-id="rain-boots"] .ko')).includes("이 노란 장화는 얼마예요?"));
+  await page.click('#tab-mid .card[data-id="crayons"] .pick-btn');
+  await page.click('#tab-mid .card[data-id="earmuffs"] .pick-btn');
+  check("중급 담기 → 5/5", (await badge()) === "5/5");
+  await page.click('#tab-mid .card[data-id="markers"] .pick-btn');
+  check("6개째는 가득 참 안내", (await badge()) === "5/5" && (await page.textContent("#tab-mid .status")).includes("가득"));
+  await page.click('#tab-mid .card[data-id="socks"] .pick-btn');
+  check("초급 담은 것 중급으로 바꾸기", (await badge()) === "5/5" && (await page.evaluate(() => window.__app.cart.find((c) => c.id === "socks").level)) === "mid");
 
   // 필터
-  const count = () => page.locator("#tab-easy .card").count();
-  await page.click('#tab-easy .chip[data-f="book"]');
-  check("📘 교과서 6장", (await count()) === 6, await count());
-  await page.click('#tab-easy .chip[data-f="places"]');
-  check("📍 장소 12장", (await count()) === 12);
-  await page.click('#tab-easy .chip[data-f="rec"]');
-  const recN = await count(), recTags = await page.locator("#tab-easy .card .tag.rec").count();
-  check("⭐ 추천만 (모두 ⭐)", recN > 0 && recN === recTags, recN);
-  check("⭐ 필터 이름에 지금 질문", (await page.textContent('#tab-easy .chip[data-f="rec"]')).includes("오늘 밤"));
-  await page.click('#tab-easy .chip[data-f="all"]');
-  check("전체 60장", (await count()) === 60);
+  const count = () => page.locator("#tab-mid .card").count();
+  await page.click('#tab-mid .chip[data-f="book"]');
+  check("📘 교과서 1장", (await count()) === 1);
+  await page.click('#tab-mid .chip[data-f="shoes"]');
+  check("👟 신발 5장", (await count()) === 5);
+  await page.click('#tab-mid .chip[data-f="cart"]');
+  check("🛒 담은 것만 5장", (await count()) === 5);
+  await page.click('#tab-mid .chip[data-f="all"]');
 
   // 단어 뜻 풍선
-  await page.click('#tab-easy .card[data-id="fly-kite"] .w[data-w="kite."]');
-  check("단어 뜻 풍선", (await page.textContent("#word-popup")).includes("연") && await page.isVisible("#word-popup"));
+  await page.click('.tab-btn[data-tab="easy"]');
+  await page.click('#tab-easy .card[data-id="socks"] .sent.ans .w[data-w="2,000"]');
+  check("숫자 뜻 풍선", (await page.textContent("#word-popup")).includes("two thousand"));
+  await page.click('#tab-easy .card[data-id="socks"] .w[data-w="these"]');
+  check("these 뜻 풍선", (await page.textContent("#word-popup")).includes("이것들"));
   await page.screenshot({ path: path.join(OUT, "desktop-easy.png") });
   await page.click('.tab-btn[data-tab="mid"]');
   await page.screenshot({ path: path.join(OUT, "desktop-mid.png") });
 
-  // 연습하기로 가기
-  await page.click("#tab-mid .go-practice");
-  check("연습하기 탭 이동", await page.isVisible("#plan-list"));
-  check("계획표 5줄", (await page.locator(".plan-row").count()) === 5);
-  check("채워진 줄 2개", (await page.locator(".plan-row[data-q]").count()) === 2);
-  check("빈 줄 안내", (await page.textContent(".plan-row.empty")).includes("활동 카드에서 골라요"));
+  // 가격 익히기
+  await page.click('.tab-btn[data-tab="price"]');
+  check("가격 카드 10장", (await page.locator(".price-card").count()) === 10);
+  check("10,000원 = ten thousand", (await page.textContent('.price-card[data-won="10000"]')).includes("ten thousand won"));
+  const qwon = await page.evaluate(() => window.__app.quiz.won);
+  check("퀴즈 빈칸", (await page.textContent("#quiz .line.ans")).includes("____"));
+  const wrong = qwon === 1000 ? 2000 : 1000;
+  await page.click(`#quiz .price-chip[data-won="${wrong}"]`);
+  check("오답 → 정답 알려 줌", (await page.textContent("#quiz .quiz-msg")).includes("아쉬워요") && (await page.locator("#quiz .price-chip.right").count()) === 1);
+  check("점수 0/1", (await page.textContent("#quiz .quiz-score")).includes("0") && (await page.textContent("#quiz .quiz-score")).includes("/ 1"));
+  await page.click("#quiz .quiz-next");
+  const qwon2 = await page.evaluate(() => window.__app.quiz.won);
+  await page.click(`#quiz .price-chip[data-won="${qwon2}"]`);
+  check("정답 → ⭕", (await page.textContent("#quiz .quiz-msg")).includes("정답"));
+  check("점수 1/2", (await page.textContent("#quiz .quiz-score b")) === "1" && (await page.textContent("#quiz .quiz-score")).includes("/ 2"));
+  await page.screenshot({ path: path.join(OUT, "desktop-price.png"), fullPage: true });
 
-  // 말하기 (가짜 인식: 정확)
-  const row1 = page.locator('.plan-row[data-q="afternoon"]');
-  await row1.locator(".mic").click();
-  await row1.locator(".score-line").waitFor({ timeout: 8000 });
-  check("실시간 들리는 말", (await page.evaluate(() => window.__sawInterim)).includes("👂 들리는 말: I'm going to"), await page.evaluate(() => window.__sawInterim));
-  check("정확 → 100%", (await row1.locator(".score-line").textContent()).includes("100%"));
-  check("⭐ 표시", (await row1.locator(".score-line").textContent()).includes("⭐"));
-  check("기록 1회", (await row1.locator(".stat-line").textContent()).includes("1회"));
-  await page.waitForFunction(() => !document.querySelector('.plan-row[data-q="afternoon"] .play-me').disabled, null, { timeout: 5000 }).catch(() => {});
-  check("▶ 내 목소리 활성", !(await row1.locator(".play-me").isDisabled()));
-  const played = await page.evaluate(async () => {
-    let ok = false; const orig = Audio.prototype.play;
-    Audio.prototype.play = function () { ok = !!this.src && this.src.startsWith("blob:"); return Promise.resolve(); };
-    document.querySelector('.plan-row[data-q="afternoon"] .play-me').click();
-    Audio.prototype.play = orig; return ok;
-  });
-  check("녹음 재생(blob)", played);
+  // 연습하기
+  await page.click('.tab-btn[data-tab="practice"]');
+  check("쇼핑 목록 5줄", (await page.locator("#cart-list .plan-row[data-id]").count()) === 5);
+  check("합계", (await page.textContent("#cart-total")).includes("원"));
+  check("인사 도구 2개", (await page.locator("#greet-list .speak-tool").count()) === 2);
+  check("요약 0/12", (await page.textContent("#sum-done")) === "0/12");
 
-  // 말하기 (fly a cat)
-  await page.evaluate(() => { window.__fakeAlts = ["I'm going to fly a cat", "I'm going to fly a cut"]; });
-  await row1.locator(".mic").click();
-  await page.waitForFunction(() => document.querySelector('.plan-row[data-q="afternoon"] .stat-line').textContent.includes("2회"), null, { timeout: 8000 });
-  const line2 = await row1.locator(".score-line").textContent();
-  check("fly a cat → 73%", line2.includes("73%"), line2.trim());
-  check("🟥 kite 칩", (await row1.locator(".wchip.miss").allTextContents()).some((t) => t.includes("kite")));
-  check("다시 들어 볼 단어 버튼", (await row1.locator(".retry").textContent()).includes("kite"));
-  check("컴퓨터가 들은 말", (await row1.locator(".heard").textContent()).includes("fly a cat"));
-  const st = await row1.locator(".stat-line").textContent();
-  check("이번·평균·최고·횟수", st.includes("이번 73%") && st.includes("평균 87%") && st.includes("최고 100%") && st.includes("2회"), st);
-  check("요약 총 2회", (await page.textContent("#sum-total")) === "2");
-  check("요약 평균 87%", (await page.textContent("#sum-avg")) === "87%");
-  check("요약 1/5", (await page.textContent("#sum-done")) === "1/5");
+  const qTool = page.locator('#cart-list .plan-row[data-id="sneakers"] .speak-tool').first();
+  await qTool.locator(".mic").click();
+  await qTool.locator(".score-line").waitFor({ timeout: 8000 });
+  check("실시간 들리는 말", (await page.evaluate(() => window.__sawInterim)).includes("👂 들리는 말: how much are"), await page.evaluate(() => window.__sawInterim));
+  // sneakers 질문인데 socks로 말함
+  const s1 = await qTool.locator(".score-line").textContent();
+  check("socks ≠ sneakers → 감점", !s1.includes("100%"), s1.trim());
 
-  // 새로고침 후 기록 유지
+  const aTool = page.locator('#cart-list .plan-row[data-id="sneakers"] .speak-tool').nth(1);
+  await page.evaluate(() => { window.__fakeAlts = ["they are 10000 won", "they are ten thousand one"]; });
+  await aTool.locator(".mic").click();
+  await aTool.locator(".score-line").waitFor({ timeout: 8000 });
+  check("대답 10,000 won → 100%", (await aTool.locator(".score-line").textContent()).includes("100%"));
+  await page.waitForFunction(() => !document.querySelectorAll('#cart-list .plan-row[data-id="sneakers"] .play-me')[1].disabled, null, { timeout: 5000 }).catch(() => {});
+  check("▶ 내 목소리 활성", !(await aTool.locator(".play-me").isDisabled()));
+
+  await page.evaluate(() => { window.__fakeAlts = ["they are 3000 won"]; });
+  await aTool.locator(".mic").click();
+  await page.waitForFunction(() => document.querySelectorAll('#cart-list .plan-row[data-id="sneakers"] .stat-line')[1].textContent.includes("2회"), null, { timeout: 8000 });
+  check("가격 틀림 → 🟥 10,000", (await aTool.locator(".wchip.miss").allTextContents()).some((t) => t.includes("10,000")));
+  check("가격 틀림 → 🔁", (await aTool.locator(".score-line").textContent()).includes("🔁"));
+  check("요약 총 3회", (await page.textContent("#sum-total")) === "3");
+  check("요약 2/12", (await page.textContent("#sum-done")) === "2/12");
+
+  // 새로고침 후 유지
   await page.reload(); await page.click('.tab-btn[data-tab="practice"]');
-  check("새로고침 후 기록 유지", (await page.locator('.plan-row[data-q="afternoon"] .stat-line').textContent()).includes("2회"));
-  check("새로고침 후 계획 유지", (await badge()) === "2/5");
+  check("새로고침 후 장바구니 유지", (await badge()) === "5/5");
+  check("새로고침 후 기록 유지", (await page.locator('#cart-list .plan-row[data-id="sneakers"] .stat-line').nth(1).textContent()).includes("2회"));
   await page.screenshot({ path: path.join(OUT, "desktop-practice.png"), fullPage: true });
 
   // 인쇄
@@ -164,19 +180,14 @@ function check(name, ok, extra) { if (!ok) failures++; console.log(`${ok ? "✅"
   check("인쇄 버튼 → print()", (await page.evaluate(() => window.__printed)) === 1);
   await page.emulateMedia({ media: "print" });
   check("인쇄: 마이크 도구 숨김", !(await page.isVisible(".speak-tool")));
-  check("인쇄: 탭·버튼 숨김", !(await page.isVisible(".tabs")) && !(await page.isVisible("#btn-print")));
-  check("인쇄: 계획표 보임", await page.isVisible("#plan-list"));
-  await page.pdf({ path: path.join(OUT, "print.pdf") }).catch(() => {});
+  check("인쇄: 쇼핑 목록 보임", await page.isVisible("#cart-list"));
   await page.emulateMedia({ media: "screen" });
 
   // ✕ 빼기
-  await page.click('.plan-row[data-q="tonight"] .remove');
-  check("✕ 빼기 → 1/5", (await badge()) === "1/5" && (await page.locator(".plan-row[data-q]").count()) === 1);
-
-  // 기록 지우기
+  await page.click('#cart-list .plan-row[data-id="hairpins"] .remove');
+  check("✕ 빼기 → 4/5", (await badge()) === "4/5" && (await page.locator("#cart-list .plan-row.empty").count()) === 1);
   await page.click("#btn-clear");
-  check("기록 지우기", (await page.textContent("#sum-total")) === "0" && (await page.locator('.plan-row[data-q="afternoon"] .play-me').isDisabled()));
-
+  check("기록 지우기", (await page.textContent("#sum-total")) === "0");
   check("콘솔 오류 0", errors.length === 0, errors.join(" | "));
 
   // ---------- 휴대폰 390px ----------
@@ -186,23 +197,24 @@ function check(name, ok, extra) { if (!ok) failures++; console.log(`${ok ? "✅"
   const merr = [];
   mp.on("pageerror", (e) => merr.push(String(e)));
   await mp.goto(url); await mp.waitForLoadState("networkidle");
-  await mp.click('#tab-easy .card[data-id="fly-kite"] .pick-btn');
-  await mp.click('#tab-easy .q-btn[data-i="3"]');
-  await mp.click('#tab-easy .card[data-id="pick-apples"] .pick-btn');
-  for (const t of ["easy", "mid", "practice"]) {
+  await mp.click('#tab-easy .card[data-id="socks"] .pick-btn');
+  await mp.click('#tab-easy .card[data-id="colored-pencils"] .pick-btn');
+  for (const t of ["easy", "mid", "price", "practice"]) {
     await mp.click(`.tab-btn[data-tab="${t}"]`);
     const sw = await mp.evaluate(() => document.documentElement.scrollWidth);
     check(`390px 가로 스크롤 없음 (${t})`, sw <= 390, sw);
   }
   const tabH = await mp.$$eval(".tab-btn", (bs) => bs.map((b) => b.getBoundingClientRect().height));
-  check("휴대폰 탭 한 줄·짧은 이름", tabH.every((h) => h < 48) && (await mp.textContent(".tab-btn[data-tab=easy]")).includes("초급 카드"), tabH.join(","));
+  check("휴대폰 탭 한 줄", tabH.every((h) => h < 48), tabH.join(","));
   await mp.click('.tab-btn[data-tab="easy"]');
   await mp.screenshot({ path: path.join(OUT, "mobile-easy.png") });
-  await mp.evaluate(() => window.scrollTo(0, 900));
+  await mp.evaluate(() => window.scrollTo(0, 1100));
   await mp.screenshot({ path: path.join(OUT, "mobile-easy-cards.png") });
+  await mp.click('.tab-btn[data-tab="price"]');
+  await mp.screenshot({ path: path.join(OUT, "mobile-price.png"), fullPage: true });
   await mp.click('.tab-btn[data-tab="practice"]');
-  await mp.locator('.plan-row[data-q="afternoon"] .mic').click();
-  await mp.locator('.plan-row[data-q="afternoon"] .score-line').waitFor({ timeout: 8000 });
+  await mp.locator('#cart-list .plan-row[data-id="socks"] .mic').first().click();
+  await mp.locator('#cart-list .plan-row[data-id="socks"] .score-line').first().waitFor({ timeout: 8000 });
   await mp.screenshot({ path: path.join(OUT, "mobile-practice.png"), fullPage: true });
   check("휴대폰 콘솔 오류 0", merr.length === 0, merr.join(" | "));
 
@@ -212,14 +224,11 @@ function check(name, ok, extra) { if (!ok) failures++; console.log(`${ok ? "✅"
     Object.defineProperty(window, "webkitSpeechRecognition", { value: undefined }); });
   const np = await n.newPage();
   await np.goto(url);
-  await np.click('#tab-easy .card[data-id="study-math"] .pick-btn');
   await np.click('.tab-btn[data-tab="practice"]');
   check("인식 없음 안내", (await np.textContent("#mic-support")).includes("4초 녹음"));
-  const t0 = Date.now();
-  await np.locator(".plan-row[data-q] .mic").click();
-  await np.locator(".plan-row[data-q] .feedback").waitFor({ timeout: 9000 });
-  check("4초 녹음 후 안내", (await np.textContent(".plan-row[data-q] .feedback")).includes("녹음했어요"), (Date.now() - t0) + "ms");
-  check("녹음 재생 버튼 활성", !(await np.locator(".plan-row[data-q] .play-me").isDisabled()));
+  await np.locator("#greet-list .mic").first().click();
+  await np.locator("#greet-list .feedback").waitFor({ timeout: 9000 });
+  check("4초 녹음 후 안내", (await np.textContent("#greet-list .feedback")).includes("녹음했어요"));
 
   // ---------- 둘 다 없으면 비활성 ----------
   const z = await browser.newContext({ viewport: { width: 1000, height: 800 } });
@@ -227,16 +236,15 @@ function check(name, ok, extra) { if (!ok) failures++; console.log(`${ok ? "✅"
     Object.defineProperty(window, "SpeechRecognition", { value: undefined }); Object.defineProperty(window, "MediaRecorder", { value: undefined }); });
   const zp = await z.newPage();
   await zp.goto(url);
-  await zp.click('#tab-easy .card[data-id="study-math"] .pick-btn');
   await zp.click('.tab-btn[data-tab="practice"]');
-  check("둘 다 없으면 버튼 비활성 + Chrome 권장", (await zp.locator(".plan-row[data-q] .mic").isDisabled()) && (await zp.textContent(".plan-row[data-q] .stat-line")).includes("Chrome 권장"));
+  check("둘 다 없으면 버튼 비활성 + Chrome 권장", (await zp.locator("#greet-list .mic").first().isDisabled()) && (await zp.textContent("#greet-list .stat-line")).includes("Chrome 권장"));
 
   // ---------- 그림 없을 때 이모지 타일 ----------
   const e = await browser.newContext({ viewport: { width: 1000, height: 800 } });
-  await stubFonts(e); await e.route("**/images/fly-kite.png", (r) => r.abort());
+  await stubFonts(e); await e.route("**/images/gloves.png", (r) => r.abort());
   const ep = await e.newPage();
   await ep.goto(url); await ep.waitForLoadState("networkidle");
-  check("그림 못 불러오면 이모지 타일", await ep.isVisible('.card[data-id="fly-kite"] .pic.fallback .emoji-tile'));
+  check("그림 못 불러오면 이모지 타일", await ep.isVisible('.card[data-id="gloves"] .pic.fallback .emoji-tile'));
 
   await browser.close(); server.close();
   console.log(failures ? `\n❌ 실패 ${failures}개` : "\n🎉 브라우저 테스트 모두 통과");

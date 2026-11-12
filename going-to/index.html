@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>What are you going to do? · 나의 계획 말하기</title>
+  <link rel="stylesheet" href="https://hangeul.pstatic.net/hangeul_static/css/nanum-square-round.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="leaves" aria-hidden="true">
+      <span>🍁</span><span>🍂</span><span>🍁</span><span>🍂</span><span>🍁</span><span>🍂</span><span>🍁</span><span>🍂</span>
+    </div>
+    <h1><span class="en">What are you going to do?</span></h1>
+    <p class="subtitle">천재(함) 6학년 9단원 · 언제 무엇을 할지 묻고 대답해요 🍁</p>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab-btn active" data-tab="easy" role="tab">🎨 <span class="full">활동 카드 (초급)</span><span class="short">초급 카드</span></button>
+    <button class="tab-btn" data-tab="mid" role="tab">🎨 <span class="full">활동 카드 (중급)</span><span class="short">중급 카드</span></button>
+    <button class="tab-btn" data-tab="practice" role="tab">🎤 <span class="full">연습하기</span><span class="short">연습</span> <span id="plan-count" class="tab-count">0/5</span></button>
+  </nav>
+
+  <main>
+    <section id="tab-easy" class="tab-panel active" data-level="easy"></section>
+    <section id="tab-mid" class="tab-panel" data-level="mid"></section>
+
+    <section id="tab-practice" class="tab-panel">
+      <div class="block summary-block no-print">
+        <div class="summary">
+          <span class="stat">🎙️ 총 연습 <b id="sum-total">0</b>회</span>
+          <span class="stat">📊 평균 정확도 <b id="sum-avg">-</b></span>
+          <span class="stat">✅ 연습한 문장 <b id="sum-done">0/5</b></span>
+        </div>
+        <div class="btn-row">
+          <button id="btn-clear" class="btn soft">🧹 기록 지우기</button>
+          <button id="btn-listen-all" class="btn soft">🔊 전체 듣기</button>
+          <button id="btn-print" class="btn soft">🖨️ 인쇄하기</button>
+        </div>
+        <p id="mic-support" class="hint"></p>
+      </div>
+
+      <div class="block plan-block">
+        <h2>📅 나의 계획표 · <span class="en">My Plans</span></h2>
+        <ol id="plan-list" class="plan-list"></ol>
+      </div>
+    </section>
+  </main>
+
+  <div id="word-popup" class="word-popup hidden" role="tooltip"></div>
+
+  <footer class="app-footer no-print">
+    6학년 영어 · What are you going to do? 🍁 ·
+    <a href="../index.html">새 단원: How much are these socks? 🛍️</a> ·
+    <a href="../favorite-subject/index.html">이전 단원: What's your favorite subject? 📚</a> ·
+    <a href="../invite/index.html">Can you come to the ___? 🎉</a>
+  </footer>
+
+  <script src="data.js"></script>
+  <script src="score.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

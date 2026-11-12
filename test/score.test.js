@@ -1,6 +1,7 @@
 // 채점 함수 단위 테스트:  node test/score.test.js
 const S = require("../score.js");
-const T = "I'm going to fly a kite.";
+const Q = "How much are these socks?";
+const A = "They are 2,000 won.";
 let fail = 0;
 function near(name, got, want, tol) {
   const ok = Math.abs(got - want) <= tol;
@@ -12,25 +13,32 @@ function eq(name, got, want) {
   if (!ok) fail++;
   console.log(`${ok ? "✅" : "❌"} ${name}: ${JSON.stringify(got)}`);
 }
-near("정확", S.scoreOne(T, "I'm going to fly a kite").score, 100, 0);
-near("I am 풀어 말하기", S.scoreOne(T, "I am going to fly a kite").score, 100, 0);
-near("fly a cat", S.scoreOne(T, "I'm going to fly a cat").score, 73, 2);
-near("fly a kite만", S.scoreOne(T, "fly a kite").score, 55, 2);
-near("순서 뒤섞임", S.scoreOne(T, "kite a fly to going am I").score, 14, 3);
-near("too → to", S.scoreOne(T, "I'm going too fly a kite").score, 100, 0);
-near("덧붙인 말 감점", S.scoreOne(T, "um I'm going to fly a kite yes").score, 94, 0);
-near("덧붙인 말 최대 10%", S.scoreOne(T, "oh well um so I'm going to fly a kite yes ok").score, 90, 0);
-near("소리 비슷 (f/p, l/r): fly→pry", S.scoreOne(T, "I'm going to pry a kite").score, 93, 0);
-eq("철자 1글자 차이 0.85", S.wordSim("play", "pray"), 0.85);
-eq("소리 비슷 0.7", S.wordSim("fly", "pry"), 0.7);
-near("후보 중 최고", S.scoreBest(T, ["I'm going to fly a cat", "I'm going to fly a kite"]).score, 100, 0);
-near("PC 붙이기", S.scoreOne("I'm going to go to a PC room.", "I'm going to go to a p c room").score, 100, 0);
-near("지명 가중치 0.6", S.scoreOne("I'm going to visit Gyeongju.", "I'm going to visit").score,
-  Math.round((0.3 + 0.3 + 1 + 0.3 + 1) / (0.3 + 0.3 + 1 + 0.3 + 1 + 0.6) * 100), 0);
-eq("kite≠cat", S.wordSim("kite", "cat"), 0);
-eq("normalize", S.normalize("I'm gonna fly a kite, too!"), ["i", "am", "going", "to", "fly", "a", "kite", "to"]);
-eq("칩 (I'm 한 칩)", S.scoreOne(T, "going to fly a cat").chips.map(c => c.text + ":" + c.status),
-  ["I'm:miss", "going:ok", "to:ok", "fly:ok", "a:ok", "kite:miss"]);
+// 숫자 말
+eq("numberWords 2000", S.numberWords(2000), "two thousand");
+eq("numberWords 10000", S.numberWords(10000), "ten thousand");
+eq("numberWords 2500", S.numberWords(2500), "two thousand five hundred");
+eq("2,000 → n2000", S.normalize("They are 2,000 won."), ["they", "are", "n2000", "won"]);
+eq("two thousand → n2000", S.normalize("they're two thousand won"), ["they", "are", "n2000", "won"]);
+eq("thousand 뒤 one → won", S.normalize("one thousand one"), ["n1000", "won"]);
+eq("₩ 기호", S.normalize("₩7,000"), ["n7000", "won"]);
+eq("원 글자", S.normalize("7000원"), ["n7000", "won"]);
+eq("thousand 없는 two는 to", S.normalize("going two fly"), ["going", "to", "fly"]);
+// 대답 채점
+near("대답 정확 (숫자)", S.scoreOne(A, "they are 2000 won").score, 100, 0);
+near("대답 정확 (말)", S.scoreOne(A, "they are two thousand won").score, 100, 0);
+near("대답 They're", S.scoreOne(A, "they're 2,000 won").score, 100, 0);
+near("won이 one으로 들림", S.scoreOne(A, "they are two thousand one").score, 100, 0);
+near("가격 틀림 → 🔁", S.scoreOne(A, "they are 3000 won").score, 50, 2);
+eq("가격 틀림 칩", S.scoreOne(A, "they are 3000 won").chips.map((c) => c.text + ":" + c.status), ["They:ok", "are:ok", "2,000:miss", "won:ok"]);
+near("10,000원", S.scoreOne("They are 10,000 won.", "they are ten thousand won").score, 100, 0);
+near("1,000원 (one thousand one)", S.scoreOne("They are 1,000 won.", "they are one thousand one").score, 100, 0);
+// 질문 채점
+near("질문 정확", S.scoreOne(Q, "how much are these socks").score, 100, 0);
+near("Yes, please. 붙여 말함 (덧붙임 감점)", S.scoreOne(Q, "yes please how much are these socks").score, 94, 0);
+near("these 빠짐", S.scoreOne(Q, "how much are socks").score, 79, 3);
+near("인사", S.scoreOne("May I help you?", "may i help you").score, 100, 0);
+near("Yes, please.", S.scoreOne("Yes, please.", "yes please").score, 100, 0);
+near("후보 중 최고", S.scoreBest(A, ["they are 3000 won", "they are 2000 won"]).score, 100, 0);
 eq("등급", [S.grade(90).icon, S.grade(70).icon, S.grade(30).icon], ["⭐", "👍", "🔁"]);
 console.log(fail ? `\n❌ 실패 ${fail}개` : "\n🎉 모두 통과");
 process.exit(fail ? 1 : 0);

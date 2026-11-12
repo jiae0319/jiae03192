@@ -1,4 +1,4 @@
-// 발음 채점 — 목표 문장과 들린 말을 단어 순서대로 정렬(동적 계획법)해서 점수를 냅니다.
+// 발음 채점 — 가격(2,000 = two thousand)은 한 덩어리 숫자로 맞춰 보고, 목표 문장과 들린 말을 단어 순서대로 정렬(동적 계획법)해서 점수를 냅니다.
 // 브라우저(window.Scorer)와 Node(require) 양쪽에서 씁니다.
 (function (root) {
   "use strict";
@@ -11,25 +11,75 @@
     "don't": "do not", "doesn't": "does not", "can't": "can not", "won't": "will not",
     "isn't": "is not", "aren't": "are not", "gonna": "going to", "wanna": "want to",
   };
-  const HOMOPHONES = { too: "to", two: "to", "2": "to", four: "for", "4": "for", fore: "for", eye: "i", ay: "a" };
+  // two→to, one→won 처럼 목표와 들린 말 양쪽을 똑같이 바꾸므로 점수에는 영향이 없어요.
+  const HOMOPHONES = { too: "to", two: "to", four: "for", fore: "for", eye: "i", ay: "a", wan: "won" };
+  const ONES = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+    "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
+  const TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+
+  // 숫자 → 영어 말 (0 ~ 999,999):  2000 → "two thousand", 10,000 → "ten thousand"
+  function numberWords(n) {
+    n = Math.floor(Number(n));
+    if (!isFinite(n) || n < 0 || n > 999999) return String(n);
+    const under1000 = (x) => {
+      const out = [];
+      if (x >= 100) { out.push(ONES[Math.floor(x / 100)], "hundred"); x %= 100; }
+      if (x >= 20) { out.push(TENS[Math.floor(x / 10)]); x %= 10; if (x) out.push(ONES[x]); }
+      else if (x > 0 || !out.length) out.push(ONES[x]);
+      return out.join(" ");
+    };
+    if (n < 1000) return under1000(n);
+    const th = Math.floor(n / 1000), rest = n % 1000;
+    return under1000(th) + " thousand" + (rest ? " " + under1000(rest) : "");
+  }
   const SMALL = new Set(["a", "an", "the", "to", "my", "i", "am", "is", "are", "in", "on", "at", "of",
     "for", "with", "and", "by"]);
 
   // 문자열 → 정규화된 토큰 배열
   function normalize(text) {
     let s = String(text || "").toLowerCase().replace(/[’‘`]/g, "'");
+    // ₩2,000 · 2,000 · 2000 → two thousand (아래에서 다시 한 토큰 "n2000"으로 묶어요)
+    s = s.replace(/₩\s*(\d[\d,]*)/g, "$1 won").replace(/(\d)\s*원/g, "$1 won");
+    s = s.replace(/\d{1,3}(?:,\d{3})+|\d+/g, (m) => " " + numberWords(m.replace(/,/g, "")) + " ");
     s = s.replace(/[^a-z0-9' ]+/g, " ");
     let words = s.split(/\s+/).filter(Boolean);
-    const out = [];
+    const pre = [];
     for (let w of words) {
       w = w.replace(/^'+|'+$/g, "");
       if (!w) continue;
-      if (CONTRACTIONS[w]) { out.push(...CONTRACTIONS[w].split(" ")); continue; }
-      w = w.replace(/'/g, "");            // uncle's → uncles
-      if (HOMOPHONES[w]) w = HOMOPHONES[w];
-      out.push(w);
+      if (CONTRACTIONS[w]) { pre.push(...CONTRACTIONS[w].split(" ")); continue; }
+      pre.push(w.replace(/'/g, ""));            // uncle's → uncles
     }
+    const out = numberize(pre).map((w) => HOMOPHONES[w] || w);
     return joinLetters(out);
+  }
+
+  // 숫자 말 묶기: "two thousand" → "n2000". hundred/thousand가 없는 숫자(two, four)는 그대로 둬요.
+  // "two thousand one" 처럼 thousand 뒤에 one이 오면 won(원)으로 들린 것으로 봐요.
+  const NUM = {};
+  ONES.forEach((w, i) => (NUM[w] = i));
+  TENS.forEach((w, i) => { if (w) NUM[w] = i * 10; });
+  function numberize(tokens) {
+    const out = [];
+    let i = 0;
+    while (i < tokens.length) {
+      let j = i;
+      while (j < tokens.length && (tokens[j] in NUM || tokens[j] === "hundred" || tokens[j] === "thousand")) j++;
+      let run = tokens.slice(i, j);
+      if (!run.some((t) => t === "hundred" || t === "thousand")) { if (j === i) out.push(tokens[i++]); else { out.push(...run); i = j; } continue; }
+      let tail = null;
+      if (run.length >= 2 && run[run.length - 1] === "one" && /^(thousand|hundred)$/.test(run[run.length - 2])) { run = run.slice(0, -1); tail = "won"; }
+      let total = 0, cur = 0;
+      for (const t of run) {
+        if (t === "hundred") cur = (cur || 1) * 100;
+        else if (t === "thousand") { total += (cur || 1) * 1000; cur = 0; }
+        else cur += NUM[t];
+      }
+      out.push("n" + (total + cur));
+      if (tail) out.push(tail);
+      i = j;
+    }
+    return out;
   }
 
   // 한 글자씩 들린 말 붙이기: "p c" → "pc" (a, i는 낱말이라 제외)
@@ -74,6 +124,7 @@
 
   function wordSim(t, h) {
     if (t === h) return 1;
+    if (/^n\d/.test(t) || /^n\d/.test(h)) return 0;              // 가격 숫자는 정확해야 해요
     if (!t || !h) return 0;
     const minLen = Math.min(t.length, h.length);
     if (minLen >= 2 && lev(t, h) === 1) return 0.85;           // 철자 1글자 차이
@@ -94,9 +145,10 @@
       if (!clean) return;
       const toks = normalize(clean);
       const isPlace = wi > 0 && /^[A-Z][a-z]/.test(clean) && clean !== "I'm" && clean !== "I";
+      const isNum = /\d/.test(clean);      // 가격 숫자는 가장 중요한 단어 (가중치 2)
       const w = { text: clean, tokens: [] };
       toks.forEach((tk) => {
-        const weight = isPlace ? 0.6 : (SMALL.has(tk) ? 0.3 : 1);
+        const weight = isNum ? 2 : isPlace ? 0.6 : (SMALL.has(tk) ? 0.3 : 1);
         w.tokens.push(tokens.length);
         tokens.push({ t: tk, weight, word: words.length });
       });
@@ -164,7 +216,7 @@
     return { icon: "🔁", text: "다시 해 볼까요?" };
   }
 
-  const api = { normalize, wordSim, soundKey, analyzeTarget, scoreOne, scoreBest, grade, lev };
+  const api = { numberWords, normalize, wordSim, soundKey, analyzeTarget, scoreOne, scoreBest, grade, lev };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.Scorer = api;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -3,36 +3,50 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>What are you going to do? · 나의 계획 말하기</title>
+  <title>How much are these socks? · 물건 값 묻고 답하기</title>
   <link rel="stylesheet" href="https://hangeul.pstatic.net/hangeul_static/css/nanum-square-round.css" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header class="app-header">
-    <div class="leaves" aria-hidden="true">
-      <span>🍁</span><span>🍂</span><span>🍁</span><span>🍂</span><span>🍁</span><span>🍂</span><span>🍁</span><span>🍂</span>
+    <div class="floaters" aria-hidden="true">
+      <span>🛍️</span><span>🧦</span><span>💰</span><span>👟</span><span>🪙</span><span>🧤</span><span>🛒</span><span>🕶️</span>
     </div>
-    <h1><span class="en">What are you going to do?</span></h1>
-    <p class="subtitle">천재(함) 6학년 9단원 · 언제 무엇을 할지 묻고 대답해요 🍁</p>
+    <h1><span class="en">How much are these socks?</span></h1>
+    <p class="subtitle">6학년 영어 · 가게에서 물건 값을 묻고 대답해요 🛍️</p>
   </header>
 
   <nav class="tabs" role="tablist">
-    <button class="tab-btn active" data-tab="easy" role="tab">🎨 <span class="full">활동 카드 (초급)</span><span class="short">초급 카드</span></button>
-    <button class="tab-btn" data-tab="mid" role="tab">🎨 <span class="full">활동 카드 (중급)</span><span class="short">중급 카드</span></button>
-    <button class="tab-btn" data-tab="practice" role="tab">🎤 <span class="full">연습하기</span><span class="short">연습</span> <span id="plan-count" class="tab-count">0/5</span></button>
+    <button class="tab-btn active" data-tab="easy" role="tab">🛍️ <span class="full">물건 카드 (초급)</span><span class="short">초급</span></button>
+    <button class="tab-btn" data-tab="mid" role="tab">🛍️ <span class="full">물건 카드 (중급)</span><span class="short">중급</span></button>
+    <button class="tab-btn" data-tab="price" role="tab">💰 <span class="full">가격 익히기</span><span class="short">가격</span></button>
+    <button class="tab-btn" data-tab="practice" role="tab">🎤 <span class="full">연습하기</span><span class="short">연습</span> <span id="cart-count" class="tab-count">0/5</span></button>
   </nav>
 
   <main>
     <section id="tab-easy" class="tab-panel active" data-level="easy"></section>
     <section id="tab-mid" class="tab-panel" data-level="mid"></section>
 
+    <section id="tab-price" class="tab-panel">
+      <div class="block">
+        <h2>💰 가격 10가지 · <span class="en">Prices</span></h2>
+        <p class="hint">천 원 단위 가격이에요. 카드를 누르면 <b class="en">They are ___ won.</b> 으로 읽어 줘요. <b class="en">thousand</b> = 천(1,000)</p>
+        <div id="price-grid" class="price-grid"></div>
+      </div>
+      <div class="block">
+        <h2>🎧 가격 듣기 퀴즈</h2>
+        <p class="hint">점원의 대답을 듣고 알맞은 가격을 골라요.</p>
+        <div id="quiz" class="quiz"></div>
+      </div>
+    </section>
+
     <section id="tab-practice" class="tab-panel">
       <div class="block summary-block no-print">
         <div class="summary">
           <span class="stat">🎙️ 총 연습 <b id="sum-total">0</b>회</span>
           <span class="stat">📊 평균 정확도 <b id="sum-avg">-</b></span>
-          <span class="stat">✅ 연습한 문장 <b id="sum-done">0/5</b></span>
+          <span class="stat">✅ 연습한 문장 <b id="sum-done">0/2</b></span>
         </div>
         <div class="btn-row">
           <button id="btn-clear" class="btn soft">🧹 기록 지우기</button>
@@ -42,9 +56,14 @@
         <p id="mic-support" class="hint"></p>
       </div>
 
+      <div class="block greet-block">
+        <h2>👋 인사하기 · <span class="en">Greeting</span></h2>
+        <ol id="greet-list" class="plan-list"></ol>
+      </div>
+
       <div class="block plan-block">
-        <h2>📅 나의 계획표 · <span class="en">My Plans</span></h2>
-        <ol id="plan-list" class="plan-list"></ol>
+        <h2>🛒 나의 쇼핑 목록 · <span class="en">My Shopping List</span> <span id="cart-total" class="cart-total"></span></h2>
+        <ol id="cart-list" class="plan-list"></ol>
       </div>
     </section>
   </main>
@@ -52,8 +71,9 @@
   <div id="word-popup" class="word-popup hidden" role="tooltip"></div>
 
   <footer class="app-footer no-print">
-    6학년 영어 · What are you going to do? 🍁 ·
-    <a href="favorite-subject/index.html">이전 단원: What's your favorite subject? 📚</a> ·
+    6학년 영어 · How much are these socks? 🛍️ ·
+    <a href="going-to/index.html">이전 단원: What are you going to do? 🍁</a> ·
+    <a href="favorite-subject/index.html">What's your favorite subject? 📚</a> ·
     <a href="invite/index.html">Can you come to the ___? 🎉</a>
   </footer>
 
