@@ -1,30 +1,33 @@
 // 데이터 점검:  node test/check-data.js
-// - 활동 60개(종류별 12개), id 중복 없음, 교과서 표현 포함·종류 안에서 맨 앞
-// - 모든 문장(초급·중급·질문)의 단어가 사전에 있음
-// - 모든 id에 images/<id>.png 있음
+// - 가격 10가지(1,000 ~ 10,000원, 천 원 단위) · 물건 20개(종류별 5개) · id 중복 없음
+// - 교과서 표현(socks, 2,000원) 포함 · 처음 가격이 모두 가격표 안에 있고 10가지 가격이 모두 쓰임
+// - 모든 문장(초급·중급 질문, 대답, 인사)의 단어가 사전에 있음 · 모든 id에 images/<id>.png 있음
 const fs = require("fs"), path = require("path");
 const D = require("../data.js");
 let fail = 0;
 const bad = (m) => { fail++; console.log("❌ " + m); };
-const ids = D.ACTIVITIES.map((a) => a.id);
-if (ids.length !== 60) bad("활동 수 " + ids.length);
+const wons = D.PRICES.map((p) => p.won);
+if (JSON.stringify(wons) !== JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => n * 1000))) bad("가격표가 1,000~10,000원 10가지가 아님");
+const ids = D.ITEMS.map((a) => a.id);
+if (ids.length !== 20) bad("물건 수 " + ids.length);
 if (new Set(ids).size !== ids.length) bad("id 중복");
 for (const c of D.CATEGORIES) {
-  const list = D.ACTIVITIES.filter((a) => a.cat === c.id);
-  if (list.length !== 12) bad(`${c.ko} ${list.length}개`);
-  const firstNonBook = list.findIndex((a) => !a.book);
-  if (list.slice(firstNonBook).some((a) => a.book)) bad(`${c.ko}: 교과서 표현이 맨 앞이 아님`);
+  const n = D.ITEMS.filter((a) => a.cat === c.id).length;
+  if (n !== 5) bad(`${c.ko} ${n}개`);
 }
-const BOOK = ["stay home", "watch a baseball game", "go camping", "clean my room", "study math", "visit my grandparents"];
-for (const b of BOOK) if (!D.ACTIVITIES.some((a) => a.book && a.en === b)) bad("교과서 표현 누락: " + b);
-const qids = D.QUESTIONS.map((q) => q.id);
-for (const a of D.ACTIVITIES) {
-  if (!a.when.length || a.when.some((w) => !qids.includes(w))) bad(a.id + " when 오류");
+const socks = D.ITEMS.find((a) => a.en === "socks");
+if (!socks || !socks.book || socks.price !== 2000) bad("교과서 표현(socks · 2,000원) 누락");
+for (const a of D.ITEMS) {
+  if (!wons.includes(a.price)) bad(a.id + " 가격이 가격표에 없음: " + a.price);
   if (!a.mid || !a.mid.en || !a.mid.ko) bad(a.id + " mid 없음");
+  if (!D.CATEGORIES.some((c) => c.id === a.cat)) bad(a.id + " 종류 오류");
 }
-const sentences = [];
-D.QUESTIONS.forEach((q) => sentences.push(`What are you going to do ${q.en}?`));
-D.ACTIVITIES.forEach((a) => { sentences.push(`I'm going to ${a.en}.`); sentences.push(`I'm going to ${a.mid.en}.`); });
+const unused = wons.filter((w) => !D.ITEMS.some((a) => a.price === w));
+if (unused.length) bad("처음 가격으로 안 쓰인 가격: " + unused.join(", "));
+const fmt = (w) => w.toLocaleString("en-US");
+const sentences = [D.DIALOG.greet.en, D.DIALOG.yes.en];
+D.PRICES.forEach((p) => sentences.push(`They are ${fmt(p.won)} won.`, `${p.en} won`));
+D.ITEMS.forEach((a) => sentences.push(`How much are these ${a.en}?`, `How much are these ${a.mid.en}?`));
 const missing = new Set();
 for (const s of sentences) {
   for (const w of s.split(/\s+/)) {
